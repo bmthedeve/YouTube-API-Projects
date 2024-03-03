@@ -1,0 +1,76 @@
+import re
+from datetime import timedelta
+from googleapiclient.discovery import build
+
+api_key = '<YOUR API KEY>'
+
+youtube = build('youtube', 'v3', developerKey=api_key)
+playlistId = input("Enter Playlist ID: ")
+
+# regEx pattern matching for Hours, Minutes & Seconds
+hours_pattern = re.compile(r'(\d+)H')
+minutes_pattern = re.compile(r'(\d+)M')
+seconds_pattern = re.compile(r'(\d+)S')
+
+total_seconds = 0
+vid_ids = []
+
+nextPageToken = None
+
+while True:
+    # fetch playlist details
+    pl_request = youtube.playlistItems().list(
+        part='contentDetails',
+        playlistId=playlistId,
+        maxResults=50,
+        pageToken=nextPageToken
+    )
+
+    pl_response = pl_request.execute()
+
+    # fetch video IDs of the videos in playlist
+    for item in pl_response['items']:
+        vid_ids.append(item['contentDetails']['videoId'])
+
+    # split video IDs into chunks of 50   #chatGPT Code starting
+    id_chunks = [vid_ids[i:i + 50] for i in range(0, len(vid_ids), 50)]
+
+    for chunk in id_chunks:
+        # get videos from video IDs
+        vid_request = youtube.videos().list(
+            part='contentDetails',
+            id=','.join(chunk)
+        )                                #chatGPT Code End
+
+        vid_response = vid_request.execute()
+
+        # add every video's duration to get total time
+        for item in vid_response['items']:
+            duration = item['contentDetails']['duration']
+
+            hours = hours_pattern.search(duration)
+            minutes = minutes_pattern.search(duration)
+            seconds = seconds_pattern.search(duration)
+
+            hours = int(hours.group(1)) if hours else 0
+            minutes = int(minutes.group(1)) if minutes else 0
+            seconds = int(seconds.group(1)) if seconds else 0
+
+            video_seconds = timedelta(
+                hours=hours,
+                minutes=minutes,
+                seconds=seconds
+            ).total_seconds()
+
+            total_seconds += video_seconds
+
+    # if there is no next page to look up, exit from loop
+    nextPageToken = pl_response.get('nextPageToken')
+    if not nextPageToken:
+        break
+
+total_seconds = int(total_seconds)  # converting to int as total_seconds is float
+minutes, seconds = divmod(total_seconds, 60)  # divmod(a,b) returns the tuple of quotient & remainder
+hours, minutes = divmod(minutes, 60)
+print(f'Total videos: {len(vid_ids)}')
+print(f'The total duration is {hours}:{minutes}:{seconds}')
