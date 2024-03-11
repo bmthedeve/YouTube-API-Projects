@@ -5,7 +5,24 @@ from googleapiclient.discovery import build
 api_key = '<YOUR API KEY>'
 
 youtube = build('youtube', 'v3', developerKey=api_key)
-playlistId = input("Enter Playlist ID: ")
+playlistURL = input("Enter the Playlist URL: ")
+
+#Slicing PlaylistID from Playlist URL using RegEx
+def extract_playlist_id(url):
+    # Regular expression pattern to match the playlist ID
+    pattern = r'list=([a-zA-Z0-9_-]+)'
+    
+    # Search for the pattern in the URL
+    match = re.search(pattern, url)
+    
+    # If a match is found, return the playlist ID
+    if match:
+        return match.group(1)
+    else:
+        return None
+
+playlistId = extract_playlist_id(playlistURL)
+print("Playlist ID:", playlistId)
 
 # regEx pattern matching for Hours, Minutes & Seconds
 hours_pattern = re.compile(r'(\d+)H')
