@@ -1,0 +1,65 @@
+import re
+from datetime import timedelta
+from googleapiclient.discovery import build
+
+api_key = '<YOUR API KEY>'
+
+youtube = build('youtube', 'v3', developerKey=api_key)
+
+playlistURL = input("Enter the Playlist URL: ")
+
+#Slicing PlaylistID from Playlist URL using RegEx
+def extract_playlist_id(url):
+    # Regular expression pattern to match the playlist ID
+    pattern = r'list=([a-zA-Z0-9_-]+)'
+
+    # Search for the pattern in the URL
+    match = re.search(pattern, url)
+
+    # If a match is found, return the playlist ID
+    if match:
+        return match.group(1)
+    else:
+        return None
+
+playlistId = extract_playlist_id(playlistURL)
+print("Playlist ID:", playlistId)
+
+vid_titles = []
+
+nextPageToken = None
+
+while True:
+    # fetch playlist details
+    plItems_request = youtube.playlistItems().list(
+        part='contentDetails,snippet',
+        playlistId=playlistId,
+        maxResults=50,
+        pageToken=nextPageToken
+    )
+    pl_request = youtube.playlists().list(
+        part='snippet',
+        id=playlistId
+    )
+
+    plItems_response = plItems_request.execute()
+    pl_response = pl_request.execute()
+
+    playlist_name = pl_response['items'][0]['snippet']['title']
+    print(f'Playlist Name: {playlist_name}')
+    playlist_channel = plItems_response['items'][0]['snippet']['channelTitle']
+    print(f'Channel Name: {playlist_channel}')
+
+    # fetch video titles of the videos in playlist
+    for item in plItems_response['items']:
+        vid_titles.append(item['snippet']['title'])
+
+    # if there is no next page to look up, exit from loop
+    nextPageToken = plItems_response.get('nextPageToken')
+    if not nextPageToken:
+        break
+
+#Print all the video titles
+print("The videos are as follows")
+for vid_title in vid_titles:
+  print(vid_title)
